@@ -5,7 +5,6 @@ pipeline {
         SONARQUBE_SERVER = 'sonarqube-server'
         IMAGE_NAME = 'aisecops'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        N8N_WEBHOOK_URL = 'http://localhost:5678/webhook-test/jenkins-failure'
     }
 
     stages {
@@ -16,20 +15,20 @@ pipeline {
             }
         }
 
-	stage('Sonarqube Scanning') {
-	    steps {
-       		 script {
-           		 def scannerHome = tool 'sonar-scanner'
-           		 withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                		sh """
-	 			${scannerHome}/bin/sonar-scanner \
-                		-Dsonar.projectKey=aisecops \
-                		-Dsonar.sources=.
-                		"""
-        	    		}
-        		}
-    		}
-	}
+        stage('Sonarqube Scanning') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=aisecops \
+                        -Dsonar.sources=.
+                        """
+                    }
+                }
+            }
+        }
 
         stage('SonarQuality Gate') {
             steps {
@@ -68,35 +67,14 @@ pipeline {
     }
 
     post {
-
+        always {
+            echo 'Pipeline completed'
+        }
         success {
             echo 'Pipeline succeeded'
         }
-
         failure {
-            echo 'Pipeline failed – sending data to n8n webhook'
-
-            script {
-                def payload = """
-                {
-                  "job_name": "${env.JOB_NAME}",
-                  "build_number": "${env.BUILD_NUMBER}",
-                  "build_url": "${env.BUILD_URL}",
-                  "status": "FAILED",
-                  "failed_stage": "${env.STAGE_NAME}"
-                }
-                """
-
-                sh """
-                curl -X POST ${N8N_WEBHOOK_URL} \
-                     -H 'Content-Type: application/json' \
-                     -d '${payload}'
-                """
-            }
-        }
-
-        always {
-            echo 'Pipeline completed'
+            echo 'Pipeline failed'
         }
     }
 }
