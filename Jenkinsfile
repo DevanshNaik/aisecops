@@ -16,17 +16,20 @@ pipeline {
             }
         }
 
-        stage('Sonarqube Scanning') {
-            steps {
-                withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    sh '''
-                    sonar-scanner \
-                    -Dsonar.projectKey=aisecops \
-                    -Dsonar.sources=.
-                    '''
-                }
-            }
-        }
+	stage('Sonarqube Scanning') {
+	    steps {
+       		 script {
+           		 def scannerHome = tool 'sonar-scanner'
+           		 withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                		sh """
+	 			${scannerHome}/bin/sonar-scanner \
+                		-Dsonar.projectKey=aisecops \
+                		-Dsonar.sources=.
+                		"""
+        	    		}
+        		}
+    		}
+	}
 
         stage('SonarQuality Gate') {
             steps {
