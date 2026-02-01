@@ -11,8 +11,7 @@ pipeline {
 
         stage('Clone Code') {
             steps {
-                git url: 'https://github.com/your-username/subnet-calculator.git',
-                    branch: 'main'
+                echo 'Code already checked out from SCM'
             }
         }
 
