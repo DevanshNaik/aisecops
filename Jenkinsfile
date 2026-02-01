@@ -3,8 +3,9 @@ pipeline {
 
     environment {
         SONARQUBE_SERVER = 'sonarqube-server'
-        IMAGE_NAME = 'subnet-calculator'
+        IMAGE_NAME = 'aisecops'
         IMAGE_TAG = "${BUILD_NUMBER}"
+        N8N_WEBHOOK_URL = 'http://localhost:5678/webhook-test/jenkins-failure'
     }
 
     stages {
@@ -20,7 +21,7 @@ pipeline {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
                     sh '''
                     sonar-scanner \
-                    -Dsonar.projectKey=subnet-calculator \
+                    -Dsonar.projectKey=aisecops \
                     -Dsonar.sources=.
                     '''
                 }
@@ -56,14 +57,41 @@ pipeline {
         stage('Deploy on Docker') {
             steps {
                 sh '''
-                docker rm -f subnet-app || true
-                docker run -d --name subnet-app -p 8080:80 ${IMAGE_NAME}:${IMAGE_TAG}
+                docker rm -f aisecops-app || true
+                docker run -d --name aisecops-app -p 8080:80 ${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
     }
 
     post {
+
+        success {
+            echo 'Pipeline succeeded'
+        }
+
+        failure {
+            echo 'Pipeline failed – sending data to n8n webhook'
+
+            script {
+                def payload = """
+                {
+                  "job_name": "${env.JOB_NAME}",
+                  "build_number": "${env.BUILD_NUMBER}",
+                  "build_url": "${env.BUILD_URL}",
+                  "status": "FAILED",
+                  "failed_stage": "${env.STAGE_NAME}"
+                }
+                """
+
+                sh """
+                curl -X POST ${N8N_WEBHOOK_URL} \
+                     -H 'Content-Type: application/json' \
+                     -d '${payload}'
+                """
+            }
+        }
+
         always {
             echo 'Pipeline completed'
         }
